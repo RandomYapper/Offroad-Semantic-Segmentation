@@ -154,7 +154,7 @@ dataset/
 
 ### Download Dataset
 
-📦 **Dataset Link**: [Google Drive - Off-Road Segmentation Dataset](YOUR_DATASET_LINK_HERE)
+📦 **Dataset Link**: [Google Drive - Off-Road Segmentation Dataset](https://falcon.duality.ai/secure/documentation/hackathon-segmentation-desert)
 
 **Download Instructions:**
 
@@ -190,7 +190,7 @@ ls -R dataset/
 
 ### Step 1: Download Pre-trained Weights
 
-📥 **Pre-trained Models**: [Google Drive - Model Weights](YOUR_MODELS_LINK_HERE)
+📥 **Pre-trained Models**: [Google Drive - Model Weights](https://drive.google.com/drive/folders/1W0_kh5rPCSUpu246IdKI82j2K1DfO3BW)
 
 Download all three checkpoint files and place them in the **root directory** of the project:
 
