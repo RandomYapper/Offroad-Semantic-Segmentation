@@ -11,7 +11,7 @@
 
 *Per-pixel intelligent fusion for challenging outdoor terrain segmentation*
 
-[🚀 Quick Start](#-quickstart--reproduce-our-results) • [📊 Performance](#-performance-notes) • [🔬 Analysis](#-how-we-analyze-failures) • [👥 Team](#-team)
+[🚀 Quick Start](#-quickstart--reproduce-our-results) • [📊 Performance](#-performance-notes) • [🔬 Analysis](#-how-we-analyze-failures)
 
 </div>
 
@@ -221,29 +221,12 @@ The `test.py` script automatically generates:
 
 <table>
 <tr>
-<td align="center">
-<img src="https://via.placeholder.com/100" width="100px;" alt=""/><br />
-<sub><b>Member 1</b></sub><br />
-<sub>Role/Specialty</sub>
-</td>
-<td align="center">
-<img src="https://via.placeholder.com/100" width="100px;" alt=""/><br />
-<sub><b>Member 2</b></sub><br />
-<sub>Role/Specialty</sub>
-</td>
-<td align="center">
-<img src="https://via.placeholder.com/100" width="100px;" alt=""/><br />
-<sub>Role/Specialty</sub>
-</td>
-<td align="center">
-<img src="https://via.placeholder.com/100" width="100px;" alt=""/><br />
-<sub><b>Member 4</b></sub><br />
-<sub>Role/Specialty</sub>
-</td>
+<td align="center"><b>Dishant Jha</b></td>
+<td align="center"><b>Kushagra Sharma</b></td>
+<td align="center"><b>Shivam Soni</b></td>
+<td align="center"><b>Utkarsh Sahu</b></td>
 </tr>
 </table>
-
-> *Replace with actual names, photos, and roles as desired.*
 
 ---
 
