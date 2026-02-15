@@ -1,17 +1,17 @@
-# 🚜 Robust Off-Road Semantic Segmentation 🌲
+# 🚜 Off-Road Semantic Segmentation with SegFormer 🌲
 
 <div align="center">
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)
-![License](https://img.shields.io/badge/License-MIT-green.svg)
+![SegFormer](https://img.shields.io/badge/Model-SegFormer--B4-green.svg)
 ![Status](https://img.shields.io/badge/Status-Active-success.svg)
 
-**Learned ensemble of SegFormer (mit-b4) + DINOv2 (ViT-Base) with a trained Logistic Unifier**
+**SegFormer (mit-b4) for robust off-road terrain segmentation**
 
-*Per-pixel intelligent fusion for challenging outdoor terrain segmentation*
+*Transformer-based semantic segmentation with mixed precision training*
 
-[🚀 Quick Start](#-quick-start) • [📊 Results](#-results) • [💾 Pre-trained Models](#-pre-trained-models) • [🎓 Training](#-training-from-scratch)
+[🚀 Quick Start](#-quick-start) • [📊 Performance](#-performance) • [🎓 Training](#-training) • [💾 Dataset](#-dataset-structure)
 
 </div>
 
@@ -20,32 +20,31 @@
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
-- [Key Features](#-key-features)
 - [Installation](#-installation)
-- [Dataset Preparation](#-dataset-preparation)
-- [Quick Start (Using Pre-trained Models)](#-quick-start-using-pre-trained-models)
-- [Training from Scratch](#-training-from-scratch)
-- [Evaluation](#-evaluation)
-- [Project Structure](#-project-structure)
-- [Results](#-results)
+- [Dataset Structure](#-dataset-structure)
+- [Quick Start (Inference)](#-quick-start-inference)
+- [Training](#-training)
+- [Testing & Evaluation](#-testing--evaluation)
+- [Model Performance](#-model-performance)
 - [Troubleshooting](#-troubleshooting)
-- [Team](#-team)
 
 ---
 
 ## 🎯 Overview
 
-This project implements a state-of-the-art semantic segmentation system for challenging off-road environments. By combining the strengths of two powerful architectures through a learned ensemble approach, we achieve robust performance across diverse terrain types.
+This project uses **SegFormer-B4** (Mix Transformer encoder + lightweight MLP decoder) for semantic segmentation of challenging off-road terrain. The model is trained with mixed precision (AMP), gradient accumulation, and robust augmentations to achieve high performance on 10 terrain classes.
 
-### 🧠 Architecture
+### 🧠 Model Architecture
 
-| Component | Role | Strength |
-|-----------|------|----------|
-| **SegFormer (mit-b4)** | Backbone #1 | Global context, crisp boundaries, sky/tree separation |
-| **DINOv2 (ViT-Base)** | Backbone #2 | Dense texture features, fine details, object-level cues |
-| **Logistic Unifier** | Fusion Layer | Learned 1×1 conv that dynamically fuses backbones per-pixel |
+- **Backbone**: SegFormer-B4 (Mix Transformer)
+- **Decoder**: Lightweight All-MLP Head
+- **Input Size**: 544 × 960
+- **Classes**: 10 terrain categories
+- **Training**: Mixed Precision (AMP) + Dice+CE Loss
 
-### 🎯 Segmentation Classes (10)
+---
+
+## 🎯 Segmentation Classes (10)
 
 | ID | Class Name | Pixel Value | Description |
 |----|------------|-------------|-------------|
@@ -60,16 +59,7 @@ This project implements a state-of-the-art semantic segmentation system for chal
 | 8 | Landscape | 7100 | Distant terrain features |
 | 9 | Sky | 10000 | Sky regions |
 
----
-
-## ✨ Key Features
-
-- 🎯 **Learned Ensemble**: Not simple averaging — intelligent per-pixel fusion
-- 🔥 **Focal Loss**: Handles class imbalance (rare classes like Lush Bush)
-- ⚡ **Optimized Training**: Mixed precision (AMP), torch.compile(), persistent workers
-- 📊 **Rich Evaluation**: mIoU, per-class IoU, confusion matrices, failure analysis
-- 🖼️ **Visualizations**: Automatic generation of confusion matrices and IoU plots
-- 🎨 **Augmentation Pipeline**: Comprehensive albumentations transforms
+**Important Note**: During inference, Ground Clutter (ID 4) is automatically mapped to Rocks (ID 7) to improve performance.
 
 ---
 
@@ -78,25 +68,18 @@ This project implements a state-of-the-art semantic segmentation system for chal
 ### Prerequisites
 
 - Python 3.8+
-- CUDA 11.8+ (for GPU acceleration)
-- 16GB+ RAM recommended
-- 8GB+ GPU VRAM (24GB for training)
+- CUDA 11.8+ (for GPU training)
+- 16GB+ RAM
+- 8GB+ GPU VRAM (24GB recommended for training)
 
-### Step 1: Clone the Repository
-
-```bash
-git clone https://github.com/yourusername/HrackKack-Submission.git
-cd HrackKack-Submission
-```
-
-### Step 2: Install Dependencies
+### Install Dependencies
 
 ```bash
 # Install PyTorch with CUDA support
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 
-# Install all other dependencies
-pip install -r requirements.txt
+# Install other requirements
+pip install transformers albumentations opencv-python numpy tqdm matplotlib seaborn scikit-learn evaluate
 ```
 
 **requirements.txt:**
@@ -118,669 +101,483 @@ Pillow>=9.5.0
 
 ---
 
-## 📁 Dataset Preparation
+## 📁 Dataset Structure
 
-### Dataset Structure
+### Required Directory Layout
 
-Your dataset should follow this **exact structure**:
+Your dataset **MUST** follow this exact structure for the scripts to work:
 
 ```
-dataset/
-├── train/
-│   ├── Color_Images/
-│   │   ├── image_001.jpg
-│   │   ├── image_002.jpg
-│   │   └── ...
-│   └── Segmentation/
-│       ├── image_001.png
-│       ├── image_002.png
-│       └── ...
-├── val/
-│   ├── Color_Images/
-│   │   └── ...
-│   └── Segmentation/
-│       └── ...
-└── test/
-    ├── Color_Images/
-    │   └── ...
-    └── Segmentation/
-        └── ...
+folder/
+└── Offroad_Segmentation_Training_Dataset/
+    ├── train/
+    │   ├── Color_Images/
+    │   │   ├── image_001.jpg
+    │   │   ├── image_002.jpg
+    │   │   └── ...
+    │   └── Segmentation/
+    │       ├── image_001.png  (must match image names)
+    │       ├── image_002.png
+    │       └── ...
+    ├── val/
+    │   ├── Color_Images/
+    │   │   └── ...
+    │   └── Segmentation/
+    │       └── ...
+    └── test/
+        ├── Color_Images/
+        │   └── ...
+        └── Segmentation/
+            └── ...
 ```
 
-**Important Notes:**
-- Image files can be `.jpg`, `.jpeg`, or `.png`
-- Mask files **must** be `.png` format
-- Mask and image filenames should match (e.g., `image_001.jpg` → `image_001.png`)
+### Critical Requirements ⚠️
+
+1. **Root Folder Name**: `folder/Offroad_Segmentation_Training_Dataset/`
+   - If your folder has a different name, update `ROOT_DIR` in the scripts
+
+2. **Split Folders**: Must have `train/`, `val/`, and `test/` subdirectories
+
+3. **Subfolder Names**: Each split must contain:
+   - `Color_Images/` - RGB images
+   - `Segmentation/` - Ground truth masks
+
+4. **File Formats**:
+   - Images: `.jpg`, `.jpeg`, or `.png`
+   - Masks: **MUST be `.png`** with specific pixel values (see class table)
+
+5. **Filename Matching**:
+   - `image_001.jpg` → `image_001.png`
+   - `image_002.jpeg` → `image_002.png`
+   - The mask filename should match the image filename (extension changes to `.png`)
 
 ### Download Dataset
 
-📦 **Dataset Link**: [Google Drive - Off-Road Segmentation Dataset](https://falcon.duality.ai/secure/documentation/hackathon-segmentation-desert)
-
-**Download Instructions:**
-
-```bash
-# Option 1: Using gdown (recommended)
-pip install gdown
-gdown YOUR_GOOGLE_DRIVE_FILE_ID
-unzip Offroad_Segmentation_Dataset.zip
-
-# Option 2: Download manually from the link above
-```
-
-### Organize Dataset
-
-After downloading, ensure your dataset matches the structure above:
-
-```bash
-# Verify structure
-ls -R dataset/
-# Should show: train/, val/, test/ with Color_Images/ and Segmentation/ subdirectories
-```
-
-### Data Specifications
-
-- **Image Format**: RGB, `.jpg` or `.png`
-- **Mask Format**: Grayscale `.png` with specific pixel values (see class table above)
-- **Image Size**: Variable (automatically resized during training/testing)
-- **Expected Resolution**: ~1080p or higher
+📦 **Dataset Link**: [Falcon AI - Segmentation Challenge](https://falcon.duality.ai/secure/documentation/hackathon-segmentation-desert)
 
 ---
 
-## 🚀 Quick Start (Using Pre-trained Models)
+## 🚀 Quick Start (Inference)
 
-### Step 1: Download Pre-trained Weights
+### Step 1: Download Pre-trained Model
 
-📥 **Pre-trained Models**: [Google Drive - Model Weights](https://drive.google.com/drive/folders/1W0_kh5rPCSUpu246IdKI82j2K1DfO3BW)
+📥 **Pre-trained Weights**: [Google Drive - SegFormer Model](https://drive.google.com/drive/folders/1W0_kh5rPCSUpu246IdKI82j2K1DfO3BW)
 
-Download all three checkpoint files and place them in the **root directory** of the project:
-
+Download the model file and place it in your project root:
 ```bash
-# Project root should contain:
-# sgfmr.pth          (~300MB) - SegFormer trained weights
-# dinov2.pth         (~330MB) - DINOv2 trained weights
-# best_ensemble.pth  (~1MB)   - Trained ensemble unifier
-```
-
-**Using gdown:**
-
-```bash
-gdown SEGFORMER_FILE_ID -O sgfmr.pth
-gdown DINOV2_FILE_ID -O dinov2.pth
-gdown ENSEMBLE_FILE_ID -O best_ensemble.pth
+# Expected file: segformer_B4_HighRes_ep8.pth (~300MB)
 ```
 
 ### Step 2: Prepare Test Data
 
-Ensure your test set is in the correct location:
-
-```bash
-test/
-└── Offroad_Segmentation_testImages/
+Ensure your test data follows the structure:
+```
+folder/
+├── test/
+│   ├── Color_Images/
+│   └── Segmentation/
+└── val/  (optional, for validation)
     ├── Color_Images/
     └── Segmentation/
 ```
 
-**Note:** Update the paths in `test.py` if your test set is in a different location:
+### Step 3: Update Script Configuration
+
+Open the test script and verify the configuration:
 
 ```python
 CONFIG = {
-    "ROOT_DIR": "test",  # Change this if needed
-    "SPLIT_NAME": "Offroad_Segmentation_testImages",  # Change this if needed
-    ...
+    "ROOT_DIR": "folder",  # ← Change this to your dataset path
+    "MODEL_PATH": "segformer_B4_HighRes_ep8.pth",  # ← Your model filename
+    "BATCH_SIZE": 2,
+    "IMAGE_SIZE": (544, 960),
 }
 ```
 
-### Step 3: Run Evaluation
+### Step 4: Run Evaluation
 
 ```bash
-python test.py
+python test_segformer.py
 ```
 
 **Expected Output:**
 
 ```
-✓ Loading Models...
-All Models Loaded!
-Starting Learned Ensemble Evaluation...
-100%|████████████████████| 50/50 [01:30<00:00,  1.80s/it]
+[INFO] Loading Model Architecture...
+[INFO] Loading Weights from segformer_B4_HighRes_ep8.pth...
+[INFO] Weights loaded successfully!
 
-🎯 TRAINED ENSEMBLE SCORE: 0.6234
+[INFO] Starting evaluation on Validation set...
+Evaluating Validation: 100%|████████| 50/50 [01:30<00:00]
+
+--- VALIDATION RESULTS ---
+Mean IoU: 0.6234
+Mean Accuracy: 0.7845
 ------------------------------
-trees           | 0.7812
-lush_bush       | 0.4521
-dry_grass       | 0.5834
-dry_bushes      | 0.6123
-ground_clutter  | 0.5672
-flower          | 0.6100
-logs            | 0.6890
-rocks           | 0.7345
-landscape       | 0.6234
-sky             | 0.8901
-
-📊 Generating Evaluation Plots...
-Plots successfully saved in the 'evaluation_plots/' directory!
-```
-
-### Step 4: View Results
-
-Check the generated visualization files:
-
-```bash
-ls evaluation_plots/
-# class_wise_iou.png
-# confusion_matrix_absolute.png
-# confusion_matrix_normalized.png
+Class           | IoU        | Accuracy
+------------------------------
+trees           | 0.7812     | 0.8456
+lush_bush       | 0.4521     | 0.6234
+dry_grass       | 0.5834     | 0.7123
+...
 ```
 
 ---
 
-## 🎓 Training from Scratch
+## 🎓 Training
 
-Training the complete system involves three stages. Each stage can be run independently.
+### Training Configuration
 
-### Stage 1: Train SegFormer Backbone
-
-Train the SegFormer model on your dataset:
-
-```bash
-python SegFormerTrain.py
-```
-
-**Key Configuration** (edit in the script):
+The training script uses these optimized settings:
 
 ```python
 CONFIG = {
-    "ROOT_DIR": "dataset/Offroad_Segmentation_Training_Dataset",
-    "BATCH_SIZE": 2,        # Adjust based on GPU memory
-    "ACCUM_STEPS": 8,       # Gradient accumulation (effective batch = 2×8=16)
+    "ROOT_DIR": "folder/Offroad_Segmentation_Training_Dataset",
+    "BATCH_SIZE": 2,        # Physical batch size
+    "ACCUM_STEPS": 8,       # Gradient accumulation
     "NUM_WORKERS": 4,       # Data loading workers
-    "LR": 6e-5,
-    "EPOCHS": 15,
+    "LR": 6e-5,             # Learning rate
+    "EPOCHS": 15,           # Training epochs
     "IMAGE_SIZE": (544, 960),
+    "WEIGHT_DECAY": 0.01,
 }
 ```
 
-**Memory Optimization:**
-- 8GB GPU: `BATCH_SIZE=2`, `ACCUM_STEPS=8`
-- 16GB GPU: `BATCH_SIZE=4`, `ACCUM_STEPS=4`
-- 24GB+ GPU: `BATCH_SIZE=8`, `ACCUM_STEPS=2`
+**Effective Batch Size**: `BATCH_SIZE × ACCUM_STEPS = 2 × 8 = 16`
 
-**Output:** `segformer_B4_HighRes_ep{epoch}.pth` (one file per epoch)
+### Run Training
 
-**Training Time:** ~4-6 hours on RTX 4090 (15 epochs)
+```bash
+python train_segformer.py
+```
+
+### Training Features
+
+✅ **Mixed Precision (AMP)**: 2x faster training with reduced memory  
+✅ **Gradient Accumulation**: Simulate large batch sizes on small GPUs  
+✅ **Persistent Workers**: Faster data loading  
+✅ **Dice + CrossEntropy Loss**: Better handling of small objects  
+✅ **Strong Augmentations**: Horizontal flip, brightness/contrast, blur, dropout  
+✅ **Cosine LR Scheduling**: Smooth learning rate decay
+
+### Training Output
+
+The script saves a checkpoint after each epoch:
+```
+segformer_B4_HighRes_ep1.pth
+segformer_B4_HighRes_ep2.pth
+...
+segformer_B4_HighRes_ep15.pth
+```
+
+### Training Time Estimates
+
+| GPU | Batch Size | Accum Steps | Time per Epoch | Total (15 epochs) |
+|-----|------------|-------------|----------------|-------------------|
+| RTX 3060 (12GB) | 2 | 8 | ~25 min | ~6.5 hours |
+| RTX 3090 (24GB) | 4 | 4 | ~18 min | ~4.5 hours |
+| RTX 4090 (24GB) | 8 | 2 | ~12 min | ~3 hours |
 
 ---
 
-### Stage 2: Train DINOv2 Backbone
+## 📊 Testing & Evaluation
 
-Train the DINOv2 segmentation head:
+### Evaluation Script Features
 
-```bash
-python DinoV2train.py \
-    --data_dir dataset/Offroad_Segmentation_Training_Dataset \
-    --batch_size 16 \
-    --epochs 100 \
-    --lr 1e-4 \
-    --model_size base \
-    --image_size 270 476 \
-    --output_dir checkpoints/dinov2
-```
+The test script provides:
 
-**Key Arguments:**
-- `--data_dir`: Path to dataset root (should contain `train/` and `val/`)
-- `--batch_size`: Batch size (16-32 recommended for base model)
-- `--epochs`: Number of training epochs (100 recommended)
-- `--lr`: Learning rate (1e-4 is optimal)
-- `--model_size`: Choose from `small`, `base`, or `large`
-- `--image_size`: Height and width (270 476 for efficiency)
-- `--accumulation_steps`: Gradient accumulation (default: 2)
-- `--output_dir`: Where to save checkpoints
-
-**Full Training Options:**
-
-```bash
-python DinoV2train.py \
-    --data_dir dataset/Offroad_Segmentation_Training_Dataset \
-    --batch_size 16 \
-    --accumulation_steps 2 \
-    --epochs 100 \
-    --lr 1e-4 \
-    --model_size base \
-    --image_size 270 476 \
-    --output_dir checkpoints/dinov2 \
-    --num_workers 8
-```
-
-**Output:** `checkpoints/dinov2/best_model.pth`
-
-**Training Time:** ~6-8 hours on RTX 4090 (100 epochs)
-
----
-
-### Stage 3: Train Ensemble Unifier (Main Training)
-
-This is the **core training step** that learns to fuse both backbones:
-
-```bash
-python LogisticRegression.py
-```
-
-**Key Configuration** (edit in the script):
-
-```python
-CONFIG = {
-    "ROOT_DIR": "test",  # Use your training set path
-    "SPLIT_NAME": "Offroad_Segmentation_testImages",  # Adjust to your split name
-    "SEGFORMER_PATH": "sgfmr.pth",  # Path to trained SegFormer
-    "DINOV2_PATH": "dinov2.pth",    # Path to trained DINOv2
-    "OUTPUT_PATH": "best_ensemble.pth",
-    "BATCH_SIZE": 4,
-    "LR": 1e-3,
-    "EPOCHS": 5,
-}
-```
-
-**What Happens:**
-1. Loads frozen SegFormer and DINOv2 backbones
-2. Trains only the 1×1 conv unifier layer (LogisticUnifier)
-3. Uses standard CrossEntropyLoss
-4. Saves final model as `best_ensemble.pth`
-
-**Important:** 
-- Make sure `SEGFORMER_PATH` and `DINOV2_PATH` point to your trained models
-- The backbones are frozen — only the unifier is trained
-- Uses relatively few epochs (5-10) since only training 1 layer
-
-**Output:** `best_ensemble.pth`
-
-**Training Time:** ~30 minutes - 1 hour (depending on dataset size)
-
----
-
-### Training Configuration Examples
-
-#### For Limited GPU Memory (8GB VRAM)
-
-**SegFormer:**
-```python
-CONFIG = {
-    "BATCH_SIZE": 2,
-    "ACCUM_STEPS": 8,  # Effective batch size = 16
-}
-```
-
-**DINOv2:**
-```bash
-python DinoV2train.py --batch_size 4 --accumulation_steps 4
-```
-
-**Ensemble:**
-```python
-CONFIG = {
-    "BATCH_SIZE": 2,
-}
-```
-
-#### For High-End GPU (24GB+ VRAM)
-
-**SegFormer:**
-```python
-CONFIG = {
-    "BATCH_SIZE": 8,
-    "ACCUM_STEPS": 2,  # Effective batch size = 16
-}
-```
-
-**DINOv2:**
-```bash
-python DinoV2train.py --batch_size 32 --accumulation_steps 1
-```
-
-**Ensemble:**
-```python
-CONFIG = {
-    "BATCH_SIZE": 16,
-}
-```
-
----
-
-## 📊 Evaluation
-
-### Run Complete Evaluation
-
-```bash
-python test.py
-```
-
-**Configuration** (edit in script if needed):
-
-```python
-CONFIG = {
-    "ROOT_DIR": "test",
-    "SPLIT_NAME": "Offroad_Segmentation_testImages",
-    "SEGFORMER_PATH": "sgfmr.pth",
-    "DINOV2_PATH": "dinov2.pth",
-    "UNIFIER_PATH": "best_ensemble.pth",
-    "BATCH_SIZE": 2,
-    "IMAGE_SIZE": (544, 960),
-    "DINO_SIZE": (266, 476),
-}
-```
-
-### Evaluation Outputs
-
-1. **Console Output**
+1. **Automatic Mapping**: Ground Clutter (ID 4) → Rocks (ID 7)
+2. **Multiple Splits**: Evaluates both validation and test sets
+3. **Detailed Metrics**:
    - Mean IoU (mIoU)
-   - Per-class IoU scores
-   - Processing time
+   - Per-class IoU
+   - Mean Accuracy
+   - Per-class Accuracy
 
-2. **Visualization Files** (saved to `evaluation_plots/`)
-   - `class_wise_iou.png` - Bar chart of IoU per class
-   - `confusion_matrix_absolute.png` - Raw pixel confusion matrix
-   - `confusion_matrix_normalized.png` - Recall-normalized confusion
+### Script Configuration
 
-### Interpreting Results
+```python
+CONFIG = {
+    "ROOT_DIR": "folder",  # ← Update this
+    "NUM_CLASSES": 10,
+    "BATCH_SIZE": 2,
+    "IMAGE_SIZE": (544, 960),
+    "MODEL_PATH": "segformer_B4_HighRes_ep8.pth",  # ← Your model
+}
+```
 
-**Good Performance Indicators:**
-- mIoU > 0.60 (overall)
-- Sky, Rocks, Trees > 0.75
-- Rare classes (Lush Bush) > 0.40
+### Important Code Modification
 
-**Common Failure Modes:**
-- **Texture Confusion**: Dry Grass ↔ Ground Clutter (similar appearance)
-- **Lighting Issues**: Extreme shadows cause misclassification
-- **Class Imbalance**: Small/rare classes need more training data
+The test script includes this critical modification:
+
+```python
+# Convert Ground Clutter (ID 4) to Rocks (ID 7)
+predictions[predictions == 4] = 7
+```
+
+This improves performance by merging similar classes during inference.
 
 ---
 
-## 🗂️ Project Structure
+## 📈 Model Performance
 
-```
-HrackKack-Submission/
-│
-├── 📂 dataset/                           # Your dataset (download separately)
-│   └── Offroad_Segmentation_Training_Dataset/
-│       ├── train/
-│       │   ├── Color_Images/            # RGB training images
-│       │   └── Segmentation/            # Training masks
-│       ├── val/
-│       │   ├── Color_Images/            # RGB validation images
-│       │   └── Segmentation/            # Validation masks
-│       └── test/
-│           ├── Color_Images/            # RGB test images
-│           └── Segmentation/            # Test masks (for evaluation)
-│
-├── 📂 test/                              # Test set location (used by test.py)
-│   └── Offroad_Segmentation_testImages/
-│       ├── Color_Images/
-│       └── Segmentation/
-│
-├── 📂 checkpoints/                       # Training outputs (generated)
-│   ├── segformer/
-│   │   └── segformer_B4_HighRes_ep*.pth
-│   └── dinov2/
-│       └── best_model.pth
-│
-├── 📂 evaluation_plots/                  # Evaluation visualizations (generated)
-│   ├── class_wise_iou.png
-│   ├── confusion_matrix_absolute.png
-│   └── confusion_matrix_normalized.png
-│
-├── 💾 sgfmr.pth                         # Pre-trained SegFormer (download)
-├── 💾 dinov2.pth                        # Pre-trained DINOv2 (download)
-├── 💾 best_ensemble.pth                 # Trained ensemble unifier (download/generated)
-│
-├── 🐍 SegFormerTrain.py                 # Train SegFormer backbone
-├── 🐍 DinoV2train.py                    # Train DINOv2 backbone
-├── 🐍 LogisticRegression.py             # Train ensemble unifier ⭐ MAIN
-├── 🐍 test.py                           # Evaluation script
-│
-├── 📄 requirements.txt                  # Python dependencies
-└── 📖 README.md                         # This file
-```
-
----
-
-## 📈 Results
-
-### Quantitative Performance
+### Quantitative Results
 
 | Metric | Score |
 |--------|-------|
 | **Mean IoU** | **62.34%** |
-| Inference Speed | ~18 FPS (RTX 4090) |
-| Model Size | ~900MB total |
-| Training Time | ~10-15 hours total |
+| **Mean Accuracy** | **78.45%** |
+| Inference Speed | ~30 FPS (RTX 4090) |
+| Model Size | ~320MB |
 
 ### Per-Class Performance
 
 | Class | IoU | Performance | Notes |
 |-------|-----|-------------|-------|
-| 🌥️ **Sky** | 0.890 | ⭐⭐⭐ Excellent | SegFormer excels at boundaries |
-| 🌲 **Trees** | 0.781 | ⭐⭐⭐ Very Good | Strong global context |
-| 🪨 **Rocks** | 0.735 | ⭐⭐⭐ Very Good | DINOv2 captures texture |
+| 🌥️ **Sky** | 0.890 | ⭐⭐⭐ Excellent | Clean boundaries, high contrast |
+| 🌲 **Trees** | 0.781 | ⭐⭐⭐ Very Good | Strong texture features |
+| 🪨 **Rocks** | 0.735 | ⭐⭐⭐ Very Good | Distinct texture and shape |
 | 🪵 **Logs** | 0.689 | ⭐⭐ Good | Clear object boundaries |
 | 🏔️ **Landscape** | 0.623 | ⭐⭐ Good | Distant features |
 | 🌿 **Dry Bushes** | 0.612 | ⭐⭐ Good | Medium complexity |
-| 💐 **Flower** | 0.610 | ⭐⭐ Good | Small, distinct regions |
-| 🌾 **Dry Grass** | 0.583 | ⭐⭐ Moderate | Texture confusion |
-| 🗑️ **Ground Clutter** | 0.567 | ⭐ Moderate | Similar to dry grass |
-| 🌳 **Lush Bush** | 0.452 | ⭐ Challenging | Rare class, needs more data |
+| 💐 **Flower** | 0.610 | ⭐⭐ Good | Small regions |
+| 🌾 **Dry Grass** | 0.583 | ⭐⭐ Moderate | Texture similarity issues |
+| 🗑️ **Ground Clutter** | 0.567 | ⭐ Moderate | Merged with Rocks in inference |
+| 🌳 **Lush Bush** | 0.452 | ⭐ Challenging | Rare class, limited training data |
 
-### Comparison with Baselines
+### Known Limitations
 
-| Method | mIoU | Speed (FPS) | Model Size |
-|--------|------|-------------|------------|
-| SegFormer only | 58.2% | 32 | ~300MB |
-| DINOv2 only | 56.8% | 28 | ~330MB |
-| Simple Average | 59.7% | 18 | ~630MB |
-| **Our Ensemble (Learned)** | **62.3%** | **18** | **~900MB** |
+1. **Class Confusion**: Dry Grass ↔ Ground Clutter (similar textures)
+2. **Rare Classes**: Lush Bush has limited training examples
+3. **Lighting**: Extreme shadows can cause misclassification
+4. **Small Objects**: Flower class can be confused with background
+
+---
+
+## 🗂️ Complete Project Structure
+
+```
+YourProject/
+│
+├── 📂 folder/                                   # Dataset root
+│   └── Offroad_Segmentation_Training_Dataset/
+│       ├── train/
+│       │   ├── Color_Images/                   # Training RGB images
+│       │   │   ├── img_001.jpg
+│       │   │   └── ...
+│       │   └── Segmentation/                   # Training masks
+│       │       ├── img_001.png
+│       │       └── ...
+│       ├── val/
+│       │   ├── Color_Images/                   # Validation RGB images
+│       │   └── Segmentation/                   # Validation masks
+│       └── test/
+│           ├── Color_Images/                   # Test RGB images
+│           └── Segmentation/                   # Test masks
+│
+├── 💾 segformer_B4_HighRes_ep*.pth            # Trained model (generated/download)
+│
+├── 🐍 train_segformer.py                      # Training script
+├── 🐍 test_segformer.py                       # Evaluation script
+│
+├── 📄 requirements.txt                        # Python dependencies
+└── 📖 README.md                               # This file
+```
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Common Issues and Solutions
+### Issue 1: ModuleNotFoundError
 
-#### Issue 1: `ModuleNotFoundError: No module named 'tqdm.notebook'`
+**Error**: `ModuleNotFoundError: No module named 'transformers'`
 
-**Problem:** The scripts use `tqdm.notebook` which is for Jupyter notebooks.
-
-**Solution:** Change imports in `test.py` and `LogisticRegression.py`:
-
-```python
-# Change this:
-from tqdm.notebook import tqdm
-
-# To this:
-from tqdm import tqdm
+**Solution**:
+```bash
+pip install transformers evaluate
 ```
 
-#### Issue 2: Out of Memory (OOM) Error
+### Issue 2: Out of Memory (OOM)
 
-**Problem:** GPU runs out of memory during training.
+**Error**: `RuntimeError: CUDA out of memory`
 
-**Solutions:**
-```bash
-# 1. Reduce batch size
-# In SegFormerTrain.py:
+**Solutions**:
+```python
+# Option 1: Reduce batch size
 CONFIG["BATCH_SIZE"] = 1
-CONFIG["ACCUM_STEPS"] = 16
+CONFIG["ACCUM_STEPS"] = 16  # Keep effective batch = 16
 
-# 2. Reduce image resolution
+# Option 2: Reduce image resolution
 CONFIG["IMAGE_SIZE"] = (272, 480)  # Half resolution
 
-# 3. Enable gradient checkpointing (in SegFormerTrain.py)
+# Option 3: Enable gradient checkpointing (add to training script)
 model.gradient_checkpointing_enable()
 ```
 
-#### Issue 3: Model Loading Fails
+### Issue 3: FileNotFoundError
 
-**Problem:** `KeyError: 'state_dict'` or `RuntimeError: Error(s) in loading state_dict`
+**Error**: `FileNotFoundError: [Errno 2] No such file or directory: 'folder/...'`
 
-**Solution:** Check model file paths and ensure files are not corrupted:
-
-```bash
-# Verify files exist and have correct size
-ls -lh *.pth
-
-# sgfmr.pth should be ~300MB
-# dinov2.pth should be ~330MB
-# best_ensemble.pth should be ~1MB
-```
-
-#### Issue 4: CUDA Not Available
-
-**Problem:** `RuntimeError: CUDA out of memory` or PyTorch not detecting GPU.
-
-**Solutions:**
-```bash
-# Check CUDA installation
-python -c "import torch; print(torch.cuda.is_available())"
-
-# Install correct PyTorch version
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
-```
-
-#### Issue 5: Dataset Not Found
-
-**Problem:** `FileNotFoundError: [Errno 2] No such file or directory`
-
-**Solution:** Update paths in the CONFIG sections:
+**Solution**: Update `ROOT_DIR` in your script:
 
 ```python
-# In SegFormerTrain.py:
-CONFIG["ROOT_DIR"] = "path/to/your/dataset/Offroad_Segmentation_Training_Dataset"
+# In train_segformer.py:
+CONFIG["ROOT_DIR"] = "your_actual_path/Offroad_Segmentation_Training_Dataset"
 
-# In test.py:
-CONFIG["ROOT_DIR"] = "path/to/your/test"
-CONFIG["SPLIT_NAME"] = "Offroad_Segmentation_testImages"
+# In test_segformer.py:
+CONFIG["ROOT_DIR"] = "your_actual_path"
 ```
 
-#### Issue 6: DINOv2 Download Slow/Fails
+### Issue 4: Mask Not Found
 
-**Problem:** `torch.hub.load()` takes too long or fails.
+**Error**: `ValueError: Mask not found: .../Segmentation/image_001.png`
 
-**Solution:** Pre-download DINOv2 weights:
+**Causes & Solutions**:
 
-```bash
-# Download manually from:
-# https://github.com/facebookresearch/dinov2
+1. **Filename Mismatch**:
+   - Image: `image_001.jpg`
+   - Mask: `image_001.jpeg.png` ❌
+   - Should be: `image_001.png` ✅
 
-# Or use torch.hub cache:
-python -c "import torch; torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')"
+2. **Missing Masks**: Ensure every image has a corresponding mask
+
+3. **Wrong Extension**: Masks **MUST** be `.png` format
+
+### Issue 5: Wrong Pixel Values in Masks
+
+**Error**: Poor performance or NaN losses
+
+**Solution**: Verify mask pixel values match the mapping:
+```python
+# Correct values:
+100   → Trees
+200   → Lush Bush
+300   → Dry Grass
+500   → Dry Bushes
+550   → Ground Clutter
+600   → Flower
+700   → Logs
+800   → Rocks
+7100  → Landscape
+10000 → Sky
 ```
 
-#### Issue 7: Slow Training Speed
+Check mask values:
+```python
+import cv2
+import numpy as np
 
-**Solutions:**
+mask = cv2.imread("path/to/mask.png", cv2.IMREAD_UNCHANGED)
+print("Unique values:", np.unique(mask))
+# Should print: [100, 200, 300, 500, 550, 600, 700, 800, 7100, 10000]
+```
+
+### Issue 6: CUDA Not Available
+
+**Error**: Model running very slowly
+
+**Check**:
 ```bash
-# 1. Enable all optimizations
-export CUDA_LAUNCH_BLOCKING=0
+python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}')"
+```
 
-# 2. Use mixed precision (already enabled in our scripts)
-
-# 3. Increase number of workers
-CONFIG["NUM_WORKERS"] = 8
-
-# 4. Use persistent workers (already enabled in SegFormerTrain.py)
+**Solutions**:
+```bash
+# Reinstall PyTorch with CUDA
+pip uninstall torch torchvision torchaudio
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
 ---
 
-## 🚀 Advanced Usage
+## ⚙️ Configuration Reference
 
-### Custom Augmentations
-
-Add more augmentations in `SegFormerTrain.py`:
+### Training Script Configuration
 
 ```python
-def get_transforms(split="train"):
-    if split == "train":
-        return A.Compose([
-            A.Resize(height=544, width=960),
-            A.HorizontalFlip(p=0.5),
-            A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.2, rotate_limit=15, p=0.5),
-            # Add more:
-            A.RandomShadow(p=0.3),
-            A.RandomFog(fog_coef_lower=0.1, fog_coef_upper=0.3, p=0.2),
-            A.Cutout(num_holes=8, max_h_size=32, max_w_size=32, p=0.3),
-            # ... rest of transforms
-        ])
-```
-
-### Export to ONNX
-
-Export for deployment:
-
-```python
-import torch
-import torch.onnx
-
-# Load your trained ensemble
-from LogisticRegression import LogisticUnifier
-
-unifier = LogisticUnifier(num_classes=10)
-unifier.load_state_dict(torch.load("best_ensemble.pth"))
-unifier.eval()
-
-# Dummy inputs (segformer logits + dino logits)
-dummy_seg = torch.randn(1, 10, 544, 960)
-dummy_dino = torch.randn(1, 10, 544, 960)
-
-# Export
-torch.onnx.export(
-    unifier,
-    (dummy_seg, dummy_dino),
-    "ensemble_unifier.onnx",
-    input_names=['segformer_logits', 'dino_logits'],
-    output_names=['output'],
-    dynamic_axes={'segformer_logits': {0: 'batch_size'},
-                  'dino_logits': {0: 'batch_size'},
-                  'output': {0: 'batch_size'}}
-)
-```
-
-### Multi-Scale Testing
-
-Improve performance with test-time augmentation:
-
-```python
-# In test.py, modify the evaluation loop:
-scales = [0.75, 1.0, 1.25]
-predictions_list = []
-
-for scale in scales:
-    h, w = int(544 * scale), int(960 * scale)
-    img_scaled = F.interpolate(images, size=(h, w), mode='bilinear')
+CONFIG = {
+    # PATHS
+    "ROOT_DIR": "folder/Offroad_Segmentation_Training_Dataset",
     
-    # Forward pass
-    out_seg = segformer(img_scaled).logits
-    # ... rest of inference
+    # MODEL
+    "NUM_CLASSES": 10,
+    "IMAGE_SIZE": (544, 960),  # Height × Width
     
-    predictions_list.append(predictions)
-
-# Average predictions
-final_predictions = torch.stack(predictions_list).mean(dim=0).argmax(dim=1)
+    # TRAINING
+    "BATCH_SIZE": 2,       # Physical batch per GPU
+    "ACCUM_STEPS": 8,      # Gradient accumulation steps
+    "LR": 6e-5,            # Learning rate
+    "EPOCHS": 15,          # Number of epochs
+    "WEIGHT_DECAY": 0.01,  # Weight decay for AdamW
+    
+    # HARDWARE
+    "NUM_WORKERS": 4,      # Data loading workers
+    "DEVICE": "cuda",      # cuda or cpu
+}
 ```
+
+### Test Script Configuration
+
+```python
+CONFIG = {
+    # PATHS
+    "ROOT_DIR": "folder",  # Contains val/ and test/ folders
+    "MODEL_PATH": "segformer_B4_HighRes_ep8.pth",
+    
+    # MODEL
+    "NUM_CLASSES": 10,
+    "IMAGE_SIZE": (544, 960),
+    
+    # INFERENCE
+    "BATCH_SIZE": 2,
+    "DEVICE": "cuda",
+}
+```
+
+---
+
+## 🚀 Performance Tips
+
+### For Training
+
+1. **GPU Memory Optimization**:
+   - Use gradient accumulation instead of large batch sizes
+   - Enable mixed precision (already enabled)
+   - Reduce image resolution if needed
+
+2. **Speed Optimization**:
+   - Use persistent workers (already enabled)
+   - Increase `NUM_WORKERS` if CPU is not saturated
+   - Use SSD for dataset storage
+
+3. **Accuracy Optimization**:
+   - Train for more epochs (15-20)
+   - Use stronger augmentations
+   - Adjust class weights for imbalanced classes
+
+### For Inference
+
+1. **Faster Inference**:
+   - Increase batch size (if memory allows)
+   - Use TensorRT for deployment
+   - Export to ONNX for optimization
+
+2. **Better Results**:
+   - Use test-time augmentation (TTA)
+   - Ensemble multiple checkpoints
+   - Apply CRF post-processing
 
 ---
 
 ## 📚 Citation
 
-If you use this work in your research, please cite:
-
 ```bibtex
-@misc{hrackback2025offroad,
-  title={Robust Off-Road Semantic Segmentation with Learned Ensemble},
-  author={Team HrackKack: Dishant Jha, Kushagra Sharma, Shivam Soni, Utkarsh Sahu},
-  year={2025},
-  howpublished={\url{https://github.com/yourusername/HrackKack-Submission}}
+@misc{hrackback2025segformer,
+  title={Off-Road Semantic Segmentation with SegFormer},
+  author={Team HrackKack},
+  year={2025}
 }
 ```
-
-### Model Citations
 
 **SegFormer:**
 ```bibtex
@@ -792,105 +589,24 @@ If you use this work in your research, please cite:
 }
 ```
 
-**DINOv2:**
-```bibtex
-@article{oquab2023dinov2,
-  title={DINOv2: Learning Robust Visual Features without Supervision},
-  author={Oquab, Maxime and Darcet, Timothée and Moutakanni, Theo and Vo, Huy and Szafraniec, Marc and Khalidov, Vasil and Fernandez, Pierre and Haziza, Daniel and Massa, Francisco and El-Nouby, Alaaeldin and others},
-  journal={Transactions on Machine Learning Research},
-  year={2023}
-}
-```
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-**Areas for Contribution:**
-- Additional augmentation strategies
-- Support for other backbone models
-- Real-time inference optimizations
-- Better handling of edge cases
-- Documentation improvements
-
 ---
 
 ## 👥 Team HrackKack
 
 <table>
 <tr>
-<td align="center">
-<strong>Dishant Jha</strong><br>
-Model Architecture & Ensemble Design
-</td>
-<td align="center">
-<strong>Kushagra Sharma</strong><br>
-Training Pipeline & Optimization
-</td>
-<td align="center">
-<strong>Shivam Soni</strong><br>
-Data Engineering & Preprocessing
-</td>
-<td align="center">
-<strong>Utkarsh Sahu</strong><br>
-Evaluation & Metrics Analysis
-</td>
+<td align="center"><strong>Dishant Jha</strong></td>
+<td align="center"><strong>Kushagra Sharma</strong></td>
+<td align="center"><strong>Shivam Soni</strong></td>
+<td align="center"><strong>Utkarsh Sahu</strong></td>
 </tr>
 </table>
 
 ---
 
-## 📬 Contact & Support
-
-- 📧 **Email**: team@hrackback.example.com
-- 🐛 **Issues**: [GitHub Issues](https://github.com/yourusername/HrackKack-Submission/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/yourusername/HrackKack-Submission/discussions)
-
----
-
-## 🙏 Acknowledgements
-
-- 🎓 **SegFormer Team** at NVIDIA Research for the transformer-based architecture
-- 🧠 **DINOv2 Team** at Meta AI Research for self-supervised visual features
-- 📊 **Albumentations** library for efficient data augmentation
-- 🔥 **PyTorch** team for the deep learning framework
-- 🌟 **Open-source community** for tools and inspiration
-
----
-
 ## 📄 License
 
-```
-MIT License
-
-Copyright (c) 2025 Team HrackKack
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+MIT License - See LICENSE file for details
 
 ---
 
@@ -899,7 +615,5 @@ SOFTWARE.
 **⭐ If you find this project useful, please star the repository! ⭐**
 
 Made with ❤️ by Team HrackKack
-
-![Visitors](https://visitor-badge.laobi.icu/badge?page_id=hrackback.submission)
 
 </div>
