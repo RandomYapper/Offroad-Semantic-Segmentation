@@ -64,8 +64,8 @@ Our solution employs a parallel architecture that processes images through two c
 ```
 Input Image (RGB)
      │
-     ├─────────────────┬─────────────────┐
-     │                 │                 │
+     ├─────────────────┬
+     │                 │                 
    DINOv2          SegFormer         
 (ViT-B/14)        (MiT-B4)         
      │                 │                
