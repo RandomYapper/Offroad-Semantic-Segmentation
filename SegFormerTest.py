@@ -9,9 +9,7 @@ from transformers import SegformerForSemanticSegmentation
 from tqdm import tqdm
 import evaluate 
 
-# ==========================================
-# 1. CONFIGURATION (Must Match Training!)
-# ==========================================
+
 CONFIG = {
     # CHANGE THIS to your actual path if needed
     "ROOT_DIR": "folder", 
@@ -29,9 +27,6 @@ ID2LABEL = {
 }
 LABEL2ID = {v: k for k, v in ID2LABEL.items()}
 
-# ==========================================
-# 2. DATASET CLASS (Identical to Training)
-# ==========================================
 class OffRoadDataset(Dataset):
     def __init__(self, root_dir, split="train", transform=None):
         self.transform = transform
@@ -86,9 +81,7 @@ class OffRoadDataset(Dataset):
 
         return image, mask.long()
 
-# ==========================================
-# 3. EVALUATION FUNCTION
-# ==========================================
+
 def run_evaluation(model, dataloader, dataset_name="Validation"):
     metric = evaluate.load("mean_iou")
     model.eval()
@@ -110,19 +103,15 @@ def run_evaluation(model, dataloader, dataset_name="Validation"):
             predictions = logits.argmax(dim=1)
             
 
-            # ### <<< MODIFICATION START >>> ###
-            # Convert Ground Clutter (ID 4) to Rocks (ID 7)
+
             predictions[predictions == 4] = 7 
-            # ### <<< MODIFICATION END >>> ###
 
 
-            # Add batch to metrics
             metric.add_batch(
                 predictions=predictions.detach().cpu().numpy(), 
                 references=masks.detach().cpu().numpy()
             )
 
-    # Compute Metrics
     metrics = metric.compute(num_labels=CONFIG["NUM_CLASSES"], ignore_index=255, reduce_labels=False)
     
     print(f"\n--- {dataset_name.upper()} RESULTS ---")
@@ -136,9 +125,6 @@ def run_evaluation(model, dataloader, dataset_name="Validation"):
         print(f"{ID2LABEL[i]:<15} | {iou:.4f}     | {acc:.4f}")
     print("-" * 30)
 
-# ==========================================
-# 4. MAIN EXECUTION
-# ==========================================
 def main():
     # A. Define Transforms (Only Normalization/Resize for Testing)
     test_transform = A.Compose([
@@ -165,7 +151,6 @@ def main():
         ignore_mismatched_sizes=True
     )
     
-    # D. Load Your Weights
     print(f"[INFO] Loading Weights from {CONFIG['MODEL_PATH']}...")
     if os.path.exists(CONFIG['MODEL_PATH']):
         # We use strict=False sometimes if there are minor mismatches, but usually True is good
