@@ -1,4 +1,4 @@
-# 🚜 Off-Road Semantic Segmentation with SegFormer 🌲
+# Off-Road Semantic Segmentation with SegFormer
 
 <div align="center">
 
@@ -17,7 +17,7 @@
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#-overview)
 - [Installation](#-installation)
@@ -334,16 +334,16 @@ This improves performance by merging similar classes during inference.
 
 | Class | IoU | Performance | Notes |
 |-------|-----|-------------|-------|
-| 🌥️ **Sky** | 0.890 | ⭐⭐⭐ Excellent | Clean boundaries, high contrast |
-| 🌲 **Trees** | 0.781 | ⭐⭐⭐ Very Good | Strong texture features |
-| 🪨 **Rocks** | 0.735 | ⭐⭐⭐ Very Good | Distinct texture and shape |
-| 🪵 **Logs** | 0.689 | ⭐⭐ Good | Clear object boundaries |
-| 🏔️ **Landscape** | 0.623 | ⭐⭐ Good | Distant features |
-| 🌿 **Dry Bushes** | 0.612 | ⭐⭐ Good | Medium complexity |
-| 💐 **Flower** | 0.610 | ⭐⭐ Good | Small regions |
-| 🌾 **Dry Grass** | 0.583 | ⭐⭐ Moderate | Texture similarity issues |
-| 🗑️ **Ground Clutter** | 0.567 | ⭐ Moderate | Merged with Rocks in inference |
-| 🌳 **Lush Bush** | 0.452 | ⭐ Challenging | Rare class, limited training data |
+| **Sky** | 0.890 | ⭐⭐⭐ Excellent | Clean boundaries, high contrast |
+| **Trees** | 0.781 | ⭐⭐⭐ Very Good | Strong texture features |
+| **Rocks** | 0.735 | ⭐⭐⭐ Very Good | Distinct texture and shape |
+| **Logs** | 0.689 | ⭐⭐ Good | Clear object boundaries |
+| **Landscape** | 0.623 | ⭐⭐ Good | Distant features |
+| **Dry Bushes** | 0.612 | ⭐⭐ Good | Medium complexity |
+| **Flower** | 0.610 | ⭐⭐ Good | Small regions |
+| **Dry Grass** | 0.583 | ⭐⭐ Moderate | Texture similarity issues |
+| **Ground Clutter** | 0.567 | ⭐ Moderate | Merged with Rocks in inference |
+| **Lush Bush** | 0.452 | ⭐ Challenging | Rare class, limited training data |
 
 ### Known Limitations
 
