@@ -12,17 +12,15 @@ import evaluate
 import torch.nn.functional as F 
 from torch.cuda.amp import autocast, GradScaler # KEY: Mixed Precision
 
-# ==========================================
-# 1. CONFIGURATION (The "Sweet Spot")
-# ==========================================
+
 CONFIG = {
     "ROOT_DIR": "folder/Offroad_Segmentation_Training_Dataset", 
     "NUM_CLASSES": 10,
     
-    # --- PERFORMANCE TUNING ---
-    "BATCH_SIZE": 2,        # High enough for speed, low enough to avoid OOM
-    "ACCUM_STEPS": 8,       # 2 * 8 = Effective Batch Size of 16 (Professional Standard)
-    "NUM_WORKERS": 4,       # 4 is optimal for Batch Size 2 (Prevents CPU overhead)
+
+    "BATCH_SIZE": 2,        
+    "ACCUM_STEPS": 8,      
+    "NUM_WORKERS": 4,      
     
     "LR": 6e-5,
     "EPOCHS": 15,     
@@ -38,9 +36,7 @@ ID2LABEL = {
 }
 LABEL2ID = {v: k for k, v in ID2LABEL.items()}
 
-# ==========================================
-# 2. CUSTOM LOSS FUNCTION (Dice + CE)
-# ==========================================
+
 class DiceCELoss(nn.Module):
     def __init__(self, num_classes):
         super(DiceCELoss, self).__init__()
@@ -63,9 +59,7 @@ class DiceCELoss(nn.Module):
 
         return 0.5 * ce_loss + 0.5 * dice_loss
 
-# ==========================================
-# 3. DATASET CLASS
-# ==========================================
+
 class OffRoadDataset(Dataset):
     def __init__(self, root_dir, split="train", transform=None):
         self.transform = transform
@@ -110,9 +104,7 @@ class OffRoadDataset(Dataset):
 
         return image, mask.long()
 
-# ==========================================
-# 4. ROBUST AUGMENTATIONS
-# ==========================================
+
 def get_transforms(split="train"):
     if split == "train":
         return A.Compose([
@@ -122,7 +114,7 @@ def get_transforms(split="train"):
             A.RandomBrightnessContrast(p=0.4),
             A.RGBShift(r_shift_limit=20, g_shift_limit=20, b_shift_limit=20, p=0.3),
             A.GaussianBlur(blur_limit=(3, 5), p=0.2),
-            A.CoarseDropout(max_holes=8, max_height=32, max_width=32, min_holes=1, p=0.3), # Critical for generalization
+            A.CoarseDropout(max_holes=8, max_height=32, max_width=32, min_holes=1, p=0.3),
             A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             ToTensorV2()
         ])
@@ -133,9 +125,7 @@ def get_transforms(split="train"):
             ToTensorV2()
         ])
 
-# ==========================================
-# 5. HIGH-PERFORMANCE TRAINING LOOP
-# ==========================================
+
 def train_and_validate():
     train_ds = OffRoadDataset(CONFIG["ROOT_DIR"], split="train", transform=get_transforms("train"))
     val_ds = OffRoadDataset(CONFIG["ROOT_DIR"], split="val", transform=get_transforms("val"))
@@ -162,17 +152,16 @@ def train_and_validate():
     )
     model.to(CONFIG["DEVICE"])
     
-    # OPTIONAL: If this STILL crashes, uncomment the line below. It saves memory at the cost of slight speed.
-    # model.gradient_checkpointing_enable()
+
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=CONFIG["LR"], weight_decay=CONFIG["WEIGHT_DECAY"])
     
-    # Scheduler: Decay LR over TOTAL STEPS (Epochs * Batches)
+
     total_steps = (len(train_loader) // CONFIG["ACCUM_STEPS"]) * CONFIG["EPOCHS"]
     lr_scheduler = torch.optim.lr_scheduler.PolynomialLR(optimizer, total_iters=total_steps, power=1.0)
 
     loss_fct = DiceCELoss(num_classes=CONFIG["NUM_CLASSES"])
-    scaler = GradScaler() # Initializes Mixed Precision Scaler
+    scaler = GradScaler() 
 
     print(f"[INFO] STARTING TRAINING")
     print(f"| Physical Batch: {CONFIG['BATCH_SIZE']}")
@@ -190,20 +179,19 @@ def train_and_validate():
         
         for step, (images, masks) in enumerate(pbar):
             images, masks = images.to(CONFIG["DEVICE"]), masks.to(CONFIG["DEVICE"])
-            
-            # 1. Forward Pass (AutoCast handles float16/float32 mixing)
+          
             with autocast():
                 outputs = model(images)
                 logits = torch.nn.functional.interpolate(
                     outputs.logits, size=masks.shape[-2:], mode="bilinear", align_corners=False
                 )
                 loss = loss_fct(logits, masks)
-                loss = loss / CONFIG["ACCUM_STEPS"] # Normalize loss
+                loss = loss / CONFIG["ACCUM_STEPS"]
 
-            # 2. Backward Pass (Scaled)
+
             scaler.scale(loss).backward()
             
-            # 3. Optimizer Step (Accumulated)
+
             if (step + 1) % CONFIG["ACCUM_STEPS"] == 0:
                 scaler.step(optimizer)
                 scaler.update()
@@ -213,14 +201,14 @@ def train_and_validate():
             train_loss += loss.item() * CONFIG["ACCUM_STEPS"]
             pbar.set_postfix(loss=loss.item() * CONFIG["ACCUM_STEPS"], lr=lr_scheduler.get_last_lr()[0])
 
-        # --- VALIDATE ---
+
         model.eval()
         print(f"Validating...")
         with torch.no_grad():
             for images, masks in tqdm(val_loader, desc=f"Epoch {epoch+1}/{CONFIG['EPOCHS']} [Val]"):
                 images, masks = images.to(CONFIG["DEVICE"]), masks.to(CONFIG["DEVICE"])
                 
-                # AMP for Validation speeds up inference significantly
+             
                 with autocast():
                     outputs = model(images)
                     logits = torch.nn.functional.interpolate(
@@ -230,7 +218,7 @@ def train_and_validate():
                 predictions = logits.float().argmax(dim=1)
                 metric.add_batch(predictions=predictions.detach().cpu().numpy(), references=masks.detach().cpu().numpy())
 
-        # --- METRICS & SAVE ---
+  
         metrics = metric.compute(num_labels=CONFIG["NUM_CLASSES"], ignore_index=255, reduce_labels=False)
         
         print(f"\n--- EPOCH {epoch+1} RESULTS ---")
